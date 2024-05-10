@@ -1,0 +1,19 @@
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+    GREEN = 2
+    YELLOW = 3
+    PURPLE = 4
+
+class PhasesEnum(Enum):
+    DOUBLETS_4 = 1
+    SAME_COLOR_6 = 2
+    SEQUENCE_4_AND_QUADRUPLET = 3
+    SEQUENCE_8 = 4
+    SAME_COLOR_7 = 5
+    SEQUENCE_9 = 6
+    QUADRUPLETS_2 = 7
+    SAME_COLOR_SEQUENCE_4_AND_TRIPLET = 8
+    SEQUENCE_5_AND_TRIPLET = 9
+    SEQUENCE_5_AND_SAME_COLOR_SEQUENCE_3 = 10
