@@ -1,5 +1,7 @@
+import logging
 from dataclasses import dataclass, field
-from src.game_definition import CardDeck, DiscardPile, Player
+from src.game_components import CardDeck, DiscardPile, Player, JokerCard, NumberCard
+from src.phases import get_phase
 
 
 @dataclass
@@ -47,8 +49,12 @@ class Phase10Game:
         self.create_players()
 
     def create_players(self):
-        assert self.number_of_players in range(2, 7), "Number of players must be between 2 and 6"
+        assert self.number_of_players in range(1, 7), "Number of players must be between 2 and 6"
         self.players = [Player(f"Player {i+1}") for i in range(self.number_of_players)]
+
+    def game_over(self):
+        """Check if the game is over"""
+        return any([player.finished_all_phases for player in self.players])
 
     def set_up_game(self):
         """Set up the game by giving each player 10 cards from the deck"""
@@ -57,22 +63,46 @@ class Phase10Game:
             for player in self.players:
                 player.draw_card(self.deck)
 
-    def evaluate_hand(self, player: Player):
+    def evaluate_player_hand(self, player: Player):
         """Evaluate the hand of a player"""
         # check if the player has completed the current phase
         # if the player has completed the phase, move to the next phase
-
         # if he player has not completed the phase, calculate the optimal card to discard. This is the card that is the
         # least likely to be useful in the future. This is calculated by checking the additional cards needed to complete
         # the phase when the card is used. The card that has the highest number of additional cards needed is the optimal
         # card to discard. If there are multiple cards with the same number of additional cards needed, any of them can be
         # discarded.
+        phase_evaluator = get_phase(player.current_phase, self.deck, self.discard_pile)
+        result, probs = phase_evaluator.evaluate_hand(player.hand_cards)
 
-        pass
+        if isinstance(result, bool) and result is True:
+            print(f"Player {player.name} has completed phase {player.current_phase}")
+            player.move_to_next_phase()
+        elif isinstance(result, NumberCard) or isinstance(result, JokerCard):
+            prob_of_discard = probs[result.idx]
+            message = f"Player {player.name} drops {result} (usage_prob {prob_of_discard:.2%})"
+            if phase_evaluator.draw_from_discard_pile:
+                new_card = self.discard_pile.draw_card()
+                message += f" and draws the {new_card} from the top of the discard pile."
+            else:
+                new_card = self.deck.draw_card()
+                message += f" and draws a card from the deck (it's a {new_card})"
+            logging.debug({card: prob for card, prob in zip(player.hand_cards, probs)})
+
+            player.discard_card(result.idx, self.discard_pile)
+            player.hand_cards.add_card(new_card)
+            print(message)
 
 
 if __name__ == "__main__":
-    game = Phase10Game()
+    game = Phase10Game(number_of_players=1)
     game.set_up_game()
-    for player in game.players:
-        print(player)
+
+    rounds = 0
+    while not game.game_over():
+        for player in game.players:
+            player.hand_cards.sort_deck()
+            game.evaluate_player_hand(player)
+            logging.info(player)
+        rounds += 1
+        print(f"Round {rounds} is over")
